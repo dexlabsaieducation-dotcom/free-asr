@@ -55,6 +55,32 @@
       word-break: break-word;
     }
     #transcript.placeholder { color: var(--dim); font-size: clamp(12px, 3.5vw, 15px); }
+    #playRow {
+      flex: 0 0 auto;
+      display: none;
+      gap: 0;
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    #playRow.visible { display: flex; }
+    #playRow button {
+      flex: 1 1 50%;
+      background: none;
+      border: none;
+      color: var(--fg);
+      font: inherit;
+      letter-spacing: inherit;
+      text-transform: inherit;
+      padding: 16px 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    #playRow button + button { border-left: 1px solid var(--line); }
+    #playRow button:disabled { opacity: 0.3; cursor: default; }
+    #playRow button.playing { background: var(--fg); color: var(--bg); }
     #hold {
       flex: 0 0 auto;
       height: 40vh;
@@ -105,7 +131,6 @@
     footer button:disabled { opacity: 0.3; cursor: default; }
     footer .right { display: flex; gap: 14px; align-items: center; }
     footer .active { color: var(--fg); }
-    #playBtn.playing { color: var(--fg); }
   </style>
 </head>
 <body>
@@ -116,10 +141,13 @@
   <div id="progWrap"><div id="progFill"></div></div>
   <main>
     <div id="transcript" class="placeholder">hold to talk</div>
+    <div id="playRow">
+      <button id="playBtn" disabled></button>
+      <button id="saveBtn" disabled>save wav</button>
+    </div>
     <button id="hold" disabled>hold</button>
   </main>
   <footer>
-    <button id="playBtn" disabled></button>
     <div class="right">
       <button id="modeBtn" disabled></button>
       <span id="threadInfo"></span>
@@ -215,7 +243,9 @@
     const expectedSampleRate = 16000;
     const holdBtn = document.getElementById('hold');
     const transcriptEl = document.getElementById('transcript');
+    const playRow = document.getElementById('playRow');
     const playBtn = document.getElementById('playBtn');
+    const saveBtn = document.getElementById('saveBtn');
     const modeBtn = document.getElementById('modeBtn');
     const threadInfo = document.getElementById('threadInfo');
 
@@ -246,12 +276,15 @@
       stopPlayback();
       if (!samples || samples.length < expectedSampleRate / 4) {
         lastSamples = null;
+        playRow.classList.remove('visible');
         playBtn.disabled = true;
-        playBtn.textContent = '';
+        saveBtn.disabled = true;
         return;
       }
       lastSamples = samples;
+      playRow.classList.add('visible');
       playBtn.disabled = false;
+      saveBtn.disabled = false;
       playBtn.textContent = 'play ' + (samples.length / expectedSampleRate).toFixed(1) + 's';
     }
 
@@ -262,10 +295,10 @@
         playSource = null;
       }
       playBtn.classList.remove('playing');
-      if (lastSamples) playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
+      playBtn.textContent = 'play ' + (lastSamples ? (lastSamples.length / expectedSampleRate).toFixed(1) + 's' : '');
     }
 
-    playBtn.addEventListener('click', function() {
+    function playLast() {
       if (!lastSamples) return;
       if (playSource) { stopPlayback(); return; }
       try {
@@ -279,21 +312,42 @@
         const source = playCtx.createBufferSource();
         source.buffer = buf;
         source.connect(playCtx.destination);
-        source.onended = () => {
-          playSource = null;
-          playBtn.classList.remove('playing');
-          if (lastSamples) playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
-        };
+        source.onended = () => { stopPlayback(); };
         source.start();
         playSource = source;
         playBtn.classList.add('playing');
         playBtn.textContent = 'stop';
       } catch (err) {
-        console.error(err);
-        playSource = null;
-        playBtn.classList.remove('playing');
-        if (lastSamples) playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
+        console.error('playback error:', err);
+        setTranscript('playback error: ' + err.message, true);
       }
+    }
+    playBtn.addEventListener('click', playLast);
+
+    function wavBlob(samples) {
+      const sr = expectedSampleRate;
+      const buf = new ArrayBuffer(44 + samples.length * 2);
+      const v = new DataView(buf);
+      const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+      ws(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); ws(8, 'WAVE');
+      ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+      ws(36, 'data'); v.setUint32(40, samples.length * 2, true);
+      let o = 44;
+      for (let i = 0; i < samples.length; i++, o += 2) {
+        let s = Math.max(-1, Math.min(1, samples[i]));
+        v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      }
+      return new Blob([buf], { type: 'audio/wav' });
+    }
+    saveBtn.addEventListener('click', function() {
+      if (!lastSamples) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(wavBlob(lastSamples));
+      a.download = 'recording.wav';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     });
 
     function makeDenoiser() {
