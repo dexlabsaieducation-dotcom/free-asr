@@ -95,6 +95,30 @@
     .footer { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
     .footer a { color: var(--accent-2); }
     .threads { color: var(--ok); }
+    .downloads { margin-bottom: 20px; display: none; }
+    .dl-item { margin-bottom: 10px; }
+    .dl-item .dl-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+    .dl-item .dl-label .dl-pct { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+    .dl-bar {
+      height: 8px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .dl-bar .dl-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: 6px;
+      transition: width 0.15s;
+    }
   </style>
 </head>
 <body>
@@ -105,6 +129,7 @@
       powered by sherpa-onnx in your browser. Your audio never leaves the device.
     </div>
     <div id="status"></div>
+    <div class="downloads" id="downloads"></div>
     <div class="mic-area">
       <button id="micBtn" disabled title="Hold to talk">🎙️</button>
       <div id="hint">Loading model…</div>
@@ -118,24 +143,81 @@
 
   <script src="coi-serviceworker.js"></script>
   <script>
-    const DATA_PART_NAMES = [
-      'hindi2hinglish-swift.data.partaa',
-      'hindi2hinglish-swift.data.partab',
-      'hindi2hinglish-swift.data.partac',
+    const MODEL_FILES = [
+      { name: 'whisper-encoder.onnx', label: 'Encoder (29 MB)' },
+      { name: 'whisper-decoder.onnx.partaa', label: 'Decoder part 1/2 (65 MB)' },
+      { name: 'whisper-decoder.onnx.partab', label: 'Decoder part 2/2 (65 MB)' },
+      { name: 'tokens.txt', label: 'Tokens (0.8 MB)' },
     ];
     let dataCache = null;
+    const downloadsEl = document.getElementById('downloads');
+    const dlItems = {};
+
+    function buildDlUi() {
+      downloadsEl.innerHTML = '';
+      for (const f of MODEL_FILES) {
+        const item = document.createElement('div');
+        item.className = 'dl-item';
+        item.innerHTML = `
+          <div class="dl-label"><span>${f.label}</span><span class="dl-pct" id="pct-${f.name}">0%</span></div>
+          <div class="dl-bar"><div class="dl-fill" id="fill-${f.name}"></div></div>`;
+        downloadsEl.appendChild(item);
+        dlItems[f.name] = { pct: document.getElementById(`pct-${f.name}`), fill: document.getElementById(`fill-${f.name}`) };
+      }
+      downloadsEl.style.display = 'block';
+    }
+
+    function fetchWithProgress(url) {
+      return new Promise((resolve, reject) => {
+        fetch(url).then(resp => {
+          if (!resp.ok) { reject(new Error(`HTTP ${resp.status} for ${url}`)); return; }
+          const total = Number(resp.headers.get('Content-Length') || 0);
+          const reader = resp.body.getReader();
+          const chunks = [];
+          let loaded = 0;
+          function tick() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                const buf = new Uint8Array(loaded);
+                let off = 0;
+                for (const c of chunks) { buf.set(c, off); off += c.length; }
+                resolve(buf);
+                return;
+              }
+              chunks.push(value);
+              loaded += value.length;
+              if (total) {
+                const pct = Math.round(loaded / total * 100);
+                dlItems[url].pct.textContent = pct + '%';
+                dlItems[url].fill.style.width = pct + '%';
+              }
+              tick();
+            }).catch(reject);
+          }
+          tick();
+        }).catch(reject);
+      });
+    }
+
     async function loadDataParts() {
       if (dataCache) return dataCache;
-      const parts = await Promise.all(DATA_PART_NAMES.map(name =>
-        fetch(name).then(r => r.arrayBuffer())));
-      const total = parts.reduce((a, b) => a + b.byteLength, 0);
+      buildDlUi();
+      const encoder = await fetchWithProgress('whisper-encoder.onnx');
+      const decA = await fetchWithProgress('whisper-decoder.onnx.partaa');
+      const decB = await fetchWithProgress('whisper-decoder.onnx.partab');
+      const tokens = await fetchWithProgress('tokens.txt');
+      const total = encoder.length + decA.length + decB.length + tokens.length;
       const merged = new Uint8Array(total);
       let offset = 0;
-      for (const p of parts) {
-        merged.set(new Uint8Array(p), offset);
-        offset += p.byteLength;
+      for (const p of [encoder, decA, decB, tokens]) {
+        merged.set(p, offset);
+        offset += p.length;
       }
       dataCache = merged.buffer;
+      for (const f of MODEL_FILES) {
+        dlItems[f.name].pct.textContent = 'done';
+        dlItems[f.name].fill.style.width = '100%';
+      }
       return dataCache;
     }
     const origFetch = window.fetch;
