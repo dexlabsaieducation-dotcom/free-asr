@@ -222,6 +222,8 @@
     let recognizer = null;
     let denoiser = null;
     let audioCtx = null;
+    let playCtx = null;
+    let playSource = null;
     let mediaStream = null;
     let recorder = null;
     let samples = [];
@@ -231,7 +233,6 @@
     let busy = false;
     let initialized = false;
     let denoise = false;
-    let audioEl = null;
 
     const numThreads = Math.min(navigator.hardwareConcurrency || 4, 8);
     threadInfo.textContent = numThreads + 't' + (crossOriginIsolated ? '' : '·1t');
@@ -242,8 +243,7 @@
       transcriptEl.classList.toggle('placeholder', !!placeholder);
     }
     function setPlayback(samples) {
-      if (audioEl) { audioEl.pause(); audioEl = null; }
-      playBtn.classList.remove('playing');
+      stopPlayback();
       if (!samples || samples.length < expectedSampleRate / 4) {
         lastSamples = null;
         playBtn.disabled = true;
@@ -255,38 +255,44 @@
       playBtn.textContent = 'play ' + (samples.length / expectedSampleRate).toFixed(1) + 's';
     }
 
-    function wavBlob(samples, sr) {
-      const buf = new ArrayBuffer(44 + samples.length * 2);
-      const v = new DataView(buf);
-      const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-      ws(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); ws(8, 'WAVE');
-      ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-      v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-      ws(36, 'data'); v.setUint32(40, samples.length * 2, true);
-      let o = 44;
-      for (let i = 0; i < samples.length; i++, o += 2) {
-        let s = Math.max(-1, Math.min(1, samples[i]));
-        v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    function stopPlayback() {
+      if (playSource) {
+        try { playSource.stop(); } catch (e) {}
+        playSource.disconnect();
+        playSource = null;
       }
-      return new Blob([buf], { type: 'audio/wav' });
+      playBtn.classList.remove('playing');
+      if (lastSamples) playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
     }
 
     playBtn.addEventListener('click', function() {
       if (!lastSamples) return;
-      if (!audioEl) {
-        audioEl = new Audio(URL.createObjectURL(wavBlob(lastSamples, expectedSampleRate)));
-        audioEl.onended = () => { playBtn.classList.remove('playing'); };
-        audioEl.onerror = () => { playBtn.classList.remove('playing'); };
-        audioEl.play().catch(() => {
+      if (playSource) { stopPlayback(); return; }
+      try {
+        if (!playCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          playCtx = new AC();
+        }
+        if (playCtx.state === 'suspended') playCtx.resume();
+        const buf = playCtx.createBuffer(1, lastSamples.length, expectedSampleRate);
+        buf.copyToChannel(lastSamples instanceof Float32Array ? lastSamples : new Float32Array(lastSamples), 0);
+        const source = playCtx.createBufferSource();
+        source.buffer = buf;
+        source.connect(playCtx.destination);
+        source.onended = () => {
+          playSource = null;
           playBtn.classList.remove('playing');
-        });
+          if (lastSamples) playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
+        };
+        source.start();
+        playSource = source;
         playBtn.classList.add('playing');
         playBtn.textContent = 'stop';
-      } else {
-        audioEl.pause();
-        audioEl = null;
+      } catch (err) {
+        console.error(err);
+        playSource = null;
         playBtn.classList.remove('playing');
-        playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
+        if (lastSamples) playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
       }
     });
 
