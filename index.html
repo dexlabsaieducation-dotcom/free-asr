@@ -22,13 +22,11 @@
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
-    #progWrap { height: 2px; background: var(--line); flex: 0 0 auto; }
+    #progWrap { height: 3px; background: var(--line); flex: 0 0 auto; }
     #progFill { height: 100%; width: 0%; background: var(--fg); }
-    #progLabel {
-      position: fixed; top: 10px; right: 12px; z-index: 5;
-      font-size: 11px; color: var(--dim);
-    }
     header {
       flex: 0 0 auto;
       display: flex;
@@ -49,40 +47,45 @@
     #transcript {
       flex: 1 1 auto;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       padding: 18px 16px;
-      font-size: 30px;
+      font-size: clamp(20px, 6vw, 30px);
       line-height: 1.45;
       white-space: pre-wrap;
       word-break: break-word;
     }
-    #transcript.placeholder { color: var(--dim); font-size: 15px; }
+    #transcript.placeholder { color: var(--dim); font-size: clamp(12px, 3.5vw, 15px); }
     #hold {
       flex: 0 0 auto;
-      height: 42%;
+      height: 40vh;
+      max-height: 340px;
+      min-height: 160px;
       margin: 0 12px 12px;
       border: 1px solid var(--line);
       background: transparent;
       color: var(--fg);
       font: inherit;
-      font-size: 44px;
+      font-size: clamp(28px, 9vw, 44px);
       letter-spacing: 0.35em;
       text-transform: uppercase;
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      touch-action: none;
     }
     #hold:disabled { opacity: 0.3; cursor: default; }
-    #hold.recording { background: var(--fg); color: var(--bg); }
+    #hold:focus, #hold:focus-visible, #hold::-moz-focus-inner { outline: none; }
+    #hold.recording { background: var(--fg); color: var(--bg); border-color: var(--fg); }
     footer {
       flex: 0 0 auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      padding: 10px 12px;
+      gap: 12px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
       border-top: 1px solid var(--line);
-      font-size: 12px;
+      font-size: 11px;
       color: var(--dim);
       text-transform: uppercase;
       letter-spacing: 0.12em;
@@ -90,28 +93,27 @@
     footer button {
       background: none;
       border: none;
-      padding: 0;
+      padding: 8px 0;
       color: var(--fg);
       font: inherit;
       text-transform: inherit;
       letter-spacing: inherit;
       cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     footer button:disabled { opacity: 0.3; cursor: default; }
-    footer .right { display: flex; gap: 16px; align-items: center; }
+    footer .right { display: flex; gap: 14px; align-items: center; }
     footer .active { color: var(--fg); }
-    #playBtn::before { content: "▶ "; }
-    #playBtn.playing::before { content: "▮▮ "; }
-    #modeBtn::after { content: ""; }
+    #playBtn.playing { color: var(--fg); }
   </style>
 </head>
 <body>
   <header>
     <span>h2h</span>
-    <span>client-side</span>
+    <span id="headRight">client-side</span>
   </header>
   <div id="progWrap"><div id="progFill"></div></div>
-  <div id="progLabel"></div>
   <main>
     <div id="transcript" class="placeholder">hold to talk</div>
     <button id="hold" disabled>hold</button>
@@ -135,13 +137,14 @@
     ];
     let dataCache = null;
     const progFill = document.getElementById('progFill');
-    const progLabel = document.getElementById('progLabel');
+    const headRight = document.getElementById('headRight');
 
     function fetchWithProgress(url) {
       return new Promise((resolve, reject) => {
         fetch(url).then(resp => {
           if (!resp.ok) { reject(new Error('HTTP ' + resp.status + ' for ' + url)); return; }
           const total = Number(resp.headers.get('Content-Length') || 0);
+          totalByName[url] = total;
           const reader = resp.body.getReader();
           const chunks = [];
           let loaded = 0;
@@ -151,11 +154,14 @@
                 const buf = new Uint8Array(loaded);
                 let off = 0;
                 for (const c of chunks) { buf.set(c, off); off += c.length; }
+                loadedByName[url] = loaded;
+                updateProgress();
                 resolve(buf);
                 return;
               }
               chunks.push(value);
               loaded += value.length;
+              loadedByName[url] = loaded;
               updateProgress();
               tick();
             }).catch(reject);
@@ -166,31 +172,23 @@
     }
     const loadedByName = {};
     const totalByName = {};
-    let dataTotal = 0;
     async function loadDataParts() {
       if (dataCache) return dataCache;
-      progLabel.textContent = 'loading';
+      headRight.textContent = 'loading 0%';
       const parts = [];
       for (const f of MODEL_FILES) {
-        const buf = await fetchWithProgress(f.name);
-        parts.push(buf);
-        loadedByName[f.name] = buf.length;
-        totalByName[f.name] = buf.length;
-        updateProgress(true);
+        parts.push(await fetchWithProgress(f.name));
       }
-      dataTotal = parts.reduce((a, b) => a + b.length, 0);
+      const dataTotal = parts.reduce((a, b) => a + b.length, 0);
       const merged = new Uint8Array(dataTotal);
       let offset = 0;
       for (const p of parts) { merged.set(p, offset); offset += p.length; }
       dataCache = merged.buffer;
-      progLabel.textContent = '';
+      progFill.style.width = '100%';
+      headRight.textContent = 'client-side';
       return dataCache;
     }
-    function updateProgress(done) {
-      if (done) {
-        progFill.style.width = '100%';
-        return;
-      }
+    function updateProgress() {
       let loaded = 0, total = 0;
       for (const f of MODEL_FILES) {
         loaded += loadedByName[f.name] || 0;
@@ -198,7 +196,7 @@
       }
       const pct = total ? Math.round(loaded / total * 100) : 0;
       progFill.style.width = pct + '%';
-      progLabel.textContent = 'loading ' + pct + '%';
+      headRight.textContent = 'loading ' + pct + '%';
     }
     const origFetch = window.fetch;
     window.fetch = function(url, opts) {
@@ -229,6 +227,7 @@
     let samples = [];
     let lastSamples = null;
     let recording = false;
+    let pressed = false;
     let busy = false;
     let initialized = false;
     let denoise = false;
@@ -245,7 +244,7 @@
     function setPlayback(samples) {
       if (audioEl) { audioEl.pause(); audioEl = null; }
       playBtn.classList.remove('playing');
-      if (!samples || samples.length < expectedSampleRate) {
+      if (!samples || samples.length < expectedSampleRate / 4) {
         lastSamples = null;
         playBtn.disabled = true;
         playBtn.textContent = '';
@@ -253,7 +252,7 @@
       }
       lastSamples = samples;
       playBtn.disabled = false;
-      playBtn.textContent = (samples.length / expectedSampleRate).toFixed(1) + 's';
+      playBtn.textContent = 'play ' + (samples.length / expectedSampleRate).toFixed(1) + 's';
     }
 
     function wavBlob(samples, sr) {
@@ -277,12 +276,17 @@
       if (!audioEl) {
         audioEl = new Audio(URL.createObjectURL(wavBlob(lastSamples, expectedSampleRate)));
         audioEl.onended = () => { playBtn.classList.remove('playing'); };
-        audioEl.play();
+        audioEl.onerror = () => { playBtn.classList.remove('playing'); };
+        audioEl.play().catch(() => {
+          playBtn.classList.remove('playing');
+        });
         playBtn.classList.add('playing');
+        playBtn.textContent = 'stop';
       } else {
         audioEl.pause();
         audioEl = null;
         playBtn.classList.remove('playing');
+        playBtn.textContent = 'play ' + (lastSamples.length / expectedSampleRate).toFixed(1) + 's';
       }
     });
 
@@ -407,7 +411,16 @@
 
     function startRecording() {
       if (!initialized || busy || recording) return;
+      pressed = true;
+      holdBtn.classList.add('recording');
+      holdBtn.textContent = 'release';
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        if (!pressed) {
+          stream.getTracks().forEach(t => t.stop());
+          holdBtn.classList.remove('recording');
+          holdBtn.textContent = 'hold';
+          return;
+        }
         mediaStream = stream;
         audioCtx = new AudioContext();
         const source = audioCtx.createMediaStreamSource(stream);
@@ -422,15 +435,16 @@
         source.connect(recorder);
         recorder.connect(audioCtx.destination);
         recording = true;
-        holdBtn.classList.add('recording');
-        holdBtn.textContent = 'release';
       }).catch(function(err) {
         console.error(err);
+        holdBtn.classList.remove('recording');
+        holdBtn.textContent = 'hold';
         setTranscript('mic denied: ' + err.message, true);
       });
     }
 
     function stopRecording() {
+      pressed = false;
       if (!recording) return;
       recording = false;
       holdBtn.classList.remove('recording');
