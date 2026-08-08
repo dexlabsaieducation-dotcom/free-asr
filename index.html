@@ -3,179 +3,149 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Free ASR — Hindi → Hinglish (client-side)</title>
+  <title>h2h</title>
   <style>
-    :root {
-      --bg: #0f0f1a;
-      --panel: #171728;
-      --panel-2: #1d1d31;
-      --border: #2a2a45;
-      --text: #e6e6ff;
-      --muted: #9a9abf;
-      --accent: #7c6cff;
-      --accent-2: #4cc9f0;
-      --danger: #ff5c7a;
-      --ok: #3ddc97;
-    }
     * { box-sizing: border-box; }
+    :root {
+      --bg: #000;
+      --fg: #fff;
+      --dim: #555;
+      --line: #222;
+    }
+    html, body { height: 100%; }
     body {
       margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(124,108,255,0.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% 110%, rgba(76,201,240,0.10), transparent 60%),
-        var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 16px;
-    }
-    .card {
-      width: 100%;
-      max-width: 640px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 28px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-    }
-    h1 { margin: 0 0 6px; font-size: 24px; }
-    .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
-    #status {
-      display: none;
-      font-size: 13px;
-      color: var(--accent-2);
-      margin-bottom: 12px;
-      min-height: 18px;
-      word-break: break-word;
-    }
-    .mic-area {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    #micBtn {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      border: 2px solid var(--accent);
-      background: rgba(124,108,255,0.12);
-      color: var(--text);
-      font-size: 40px;
-      cursor: pointer;
-      transition: transform 0.1s, background 0.2s, border-color 0.2s;
-      touch-action: manipulation;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    #micBtn:active, #micBtn.recording {
-      background: var(--danger);
-      border-color: var(--danger);
-      transform: scale(0.92);
-    }
-    #micBtn:disabled { opacity: 0.45; cursor: not-allowed; }
-    #hint { color: var(--muted); font-size: 13px; min-height: 18px; }
-    #result {
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      font-size: 18px;
-      line-height: 1.6;
-      min-height: 80px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      color: var(--text);
-    }
-    #result.placeholder { color: var(--muted); font-size: 15px; }
-    .footer { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-    .footer a { color: var(--accent-2); }
-    .threads { color: var(--ok); }
-    .downloads { margin-bottom: 20px; display: none; }
-    .dl-item { margin-bottom: 10px; }
-    .dl-item .dl-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      margin-bottom: 4px;
-      color: var(--muted);
-    }
-    .dl-item .dl-label .dl-pct { color: var(--accent-2); font-variant-numeric: tabular-nums; }
-    .dl-bar {
-      height: 8px;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      height: 100vh;
       overflow: hidden;
     }
-    .dl-bar .dl-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      border-radius: 6px;
-      transition: width 0.15s;
+    #progWrap { height: 2px; background: var(--line); flex: 0 0 auto; }
+    #progFill { height: 100%; width: 0%; background: var(--fg); }
+    #progLabel {
+      position: fixed; top: 10px; right: 12px; z-index: 5;
+      font-size: 11px; color: var(--dim);
     }
+    header {
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 10px 12px 6px;
+      font-size: 12px;
+      color: var(--dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    main {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    #transcript {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 18px 16px;
+      font-size: 30px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #transcript.placeholder { color: var(--dim); font-size: 15px; }
+    #hold {
+      flex: 0 0 auto;
+      height: 42%;
+      margin: 0 12px 12px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--fg);
+      font: inherit;
+      font-size: 44px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    #hold:disabled { opacity: 0.3; cursor: default; }
+    #hold.recording { background: var(--fg); color: var(--bg); }
+    footer {
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    footer button {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--fg);
+      font: inherit;
+      text-transform: inherit;
+      letter-spacing: inherit;
+      cursor: pointer;
+    }
+    footer button:disabled { opacity: 0.3; cursor: default; }
+    footer .right { display: flex; gap: 16px; align-items: center; }
+    footer .active { color: var(--fg); }
+    #playBtn::before { content: "▶ "; }
+    #playBtn.playing::before { content: "▮▮ "; }
+    #modeBtn::after { content: ""; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Free ASR — Hindi → Hinglish</h1>
-    <div class="subtitle">
-      100% client-side speech-to-text with the Whisper-Hindi2Hinglish-Swift model,
-      powered by sherpa-onnx in your browser. Your audio never leaves the device.
+  <header>
+    <span>h2h</span>
+    <span>client-side</span>
+  </header>
+  <div id="progWrap"><div id="progFill"></div></div>
+  <div id="progLabel"></div>
+  <main>
+    <div id="transcript" class="placeholder">hold to talk</div>
+    <button id="hold" disabled>hold</button>
+  </main>
+  <footer>
+    <button id="playBtn" disabled></button>
+    <div class="right">
+      <button id="modeBtn" disabled></button>
+      <span id="threadInfo"></span>
     </div>
-    <div id="status"></div>
-    <div class="downloads" id="downloads"></div>
-    <div class="mic-area">
-      <button id="micBtn" disabled title="Hold to talk">🎙️</button>
-      <div id="hint">Loading model…</div>
-    </div>
-    <div id="result" class="placeholder">Transcript appears here. Hold the mic button, speak in Hindi, then release.</div>
-    <div class="footer">
-      <span class="threads" id="threadInfo"></span> ·
-      Model: Oriserve/Whisper-Hindi2Hinglish-Swift · Runs locally via sherpa-onnx WASM
-    </div>
-  </div>
+  </footer>
 
   <script src="coi-serviceworker.js"></script>
   <script>
     const MODEL_FILES = [
-      { name: 'whisper-encoder.onnx', label: 'Encoder (29 MB)' },
-      { name: 'whisper-decoder.onnx.partaa', label: 'Decoder part 1/2 (65 MB)' },
-      { name: 'whisper-decoder.onnx.partab', label: 'Decoder part 2/2 (65 MB)' },
-      { name: 'tokens.txt', label: 'Tokens (0.8 MB)' },
+      { name: 'whisper-encoder.onnx', label: 'encoder' },
+      { name: 'whisper-decoder.onnx.partaa', label: 'decoder 1/2' },
+      { name: 'whisper-decoder.onnx.partab', label: 'decoder 2/2' },
+      { name: 'tokens.txt', label: 'tokens' },
+      { name: 'dpdfnet4.onnx', label: 'dpdfnet' },
     ];
     let dataCache = null;
-    const downloadsEl = document.getElementById('downloads');
-    const dlItems = {};
-
-    function buildDlUi() {
-      downloadsEl.innerHTML = '';
-      for (const f of MODEL_FILES) {
-        const item = document.createElement('div');
-        item.className = 'dl-item';
-        item.innerHTML = `
-          <div class="dl-label"><span>${f.label}</span><span class="dl-pct" id="pct-${f.name}">0%</span></div>
-          <div class="dl-bar"><div class="dl-fill" id="fill-${f.name}"></div></div>`;
-        downloadsEl.appendChild(item);
-        dlItems[f.name] = { pct: document.getElementById(`pct-${f.name}`), fill: document.getElementById(`fill-${f.name}`) };
-      }
-      downloadsEl.style.display = 'block';
-    }
+    const progFill = document.getElementById('progFill');
+    const progLabel = document.getElementById('progLabel');
 
     function fetchWithProgress(url) {
       return new Promise((resolve, reject) => {
         fetch(url).then(resp => {
-          if (!resp.ok) { reject(new Error(`HTTP ${resp.status} for ${url}`)); return; }
+          if (!resp.ok) { reject(new Error('HTTP ' + resp.status + ' for ' + url)); return; }
           const total = Number(resp.headers.get('Content-Length') || 0);
           const reader = resp.body.getReader();
           const chunks = [];
           let loaded = 0;
-          function tick() {
+          const tick = () => {
             reader.read().then(({ done, value }) => {
               if (done) {
                 const buf = new Uint8Array(loaded);
@@ -186,39 +156,49 @@
               }
               chunks.push(value);
               loaded += value.length;
-              if (total) {
-                const pct = Math.round(loaded / total * 100);
-                dlItems[url].pct.textContent = pct + '%';
-                dlItems[url].fill.style.width = pct + '%';
-              }
+              updateProgress();
               tick();
             }).catch(reject);
-          }
+          };
           tick();
         }).catch(reject);
       });
     }
-
+    const loadedByName = {};
+    const totalByName = {};
+    let dataTotal = 0;
     async function loadDataParts() {
       if (dataCache) return dataCache;
-      buildDlUi();
-      const encoder = await fetchWithProgress('whisper-encoder.onnx');
-      const decA = await fetchWithProgress('whisper-decoder.onnx.partaa');
-      const decB = await fetchWithProgress('whisper-decoder.onnx.partab');
-      const tokens = await fetchWithProgress('tokens.txt');
-      const total = encoder.length + decA.length + decB.length + tokens.length;
-      const merged = new Uint8Array(total);
-      let offset = 0;
-      for (const p of [encoder, decA, decB, tokens]) {
-        merged.set(p, offset);
-        offset += p.length;
-      }
-      dataCache = merged.buffer;
+      progLabel.textContent = 'loading';
+      const parts = [];
       for (const f of MODEL_FILES) {
-        dlItems[f.name].pct.textContent = 'done';
-        dlItems[f.name].fill.style.width = '100%';
+        const buf = await fetchWithProgress(f.name);
+        parts.push(buf);
+        loadedByName[f.name] = buf.length;
+        totalByName[f.name] = buf.length;
+        updateProgress(true);
       }
+      dataTotal = parts.reduce((a, b) => a + b.length, 0);
+      const merged = new Uint8Array(dataTotal);
+      let offset = 0;
+      for (const p of parts) { merged.set(p, offset); offset += p.length; }
+      dataCache = merged.buffer;
+      progLabel.textContent = '';
       return dataCache;
+    }
+    function updateProgress(done) {
+      if (done) {
+        progFill.style.width = '100%';
+        return;
+      }
+      let loaded = 0, total = 0;
+      for (const f of MODEL_FILES) {
+        loaded += loadedByName[f.name] || 0;
+        total += totalByName[f.name] || 0;
+      }
+      const pct = total ? Math.round(loaded / total * 100) : 0;
+      progFill.style.width = pct + '%';
+      progLabel.textContent = 'loading ' + pct + '%';
     }
     const origFetch = window.fetch;
     window.fetch = function(url, opts) {
@@ -235,59 +215,176 @@
   <script src="sherpa-onnx-asr.js"></script>
   <script>
     const expectedSampleRate = 16000;
-    const micBtn = document.getElementById('micBtn');
-    const hint = document.getElementById('hint');
-    const statusEl = document.getElementById('status');
-    const resultEl = document.getElementById('result');
+    const holdBtn = document.getElementById('hold');
+    const transcriptEl = document.getElementById('transcript');
+    const playBtn = document.getElementById('playBtn');
+    const modeBtn = document.getElementById('modeBtn');
+    const threadInfo = document.getElementById('threadInfo');
 
     let recognizer = null;
+    let denoiser = null;
     let audioCtx = null;
     let mediaStream = null;
     let recorder = null;
     let samples = [];
+    let lastSamples = null;
     let recording = false;
     let busy = false;
     let initialized = false;
+    let denoise = false;
+    let audioEl = null;
 
-    const numThreads = (navigator.hardwareConcurrency || 4);
-    document.getElementById('threadInfo').textContent =
-      `Threads: ${numThreads}${crossOriginIsolated ? ' (multithreaded)' : ' (single-threaded)'}`;
+    const numThreads = Math.min(navigator.hardwareConcurrency || 4, 8);
+    threadInfo.textContent = numThreads + 't' + (crossOriginIsolated ? '' : '·1t');
+    if (!crossOriginIsolated) threadInfo.textContent = '1t';
 
-    function setStatus(msg) {
-      statusEl.textContent = msg;
-      statusEl.style.display = msg ? 'block' : 'none';
+    function setTranscript(text, placeholder) {
+      transcriptEl.textContent = text;
+      transcriptEl.classList.toggle('placeholder', !!placeholder);
     }
-    function setHint(msg) { hint.textContent = msg; }
-    function setResult(text, placeholder) {
-      resultEl.textContent = text;
-      resultEl.classList.toggle('placeholder', !!placeholder);
+    function setPlayback(samples) {
+      if (audioEl) { audioEl.pause(); audioEl = null; }
+      playBtn.classList.remove('playing');
+      if (!samples || samples.length < expectedSampleRate) {
+        lastSamples = null;
+        playBtn.disabled = true;
+        playBtn.textContent = '';
+        return;
+      }
+      lastSamples = samples;
+      playBtn.disabled = false;
+      playBtn.textContent = (samples.length / expectedSampleRate).toFixed(1) + 's';
+    }
+
+    function wavBlob(samples, sr) {
+      const buf = new ArrayBuffer(44 + samples.length * 2);
+      const v = new DataView(buf);
+      const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+      ws(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); ws(8, 'WAVE');
+      ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+      ws(36, 'data'); v.setUint32(40, samples.length * 2, true);
+      let o = 44;
+      for (let i = 0; i < samples.length; i++, o += 2) {
+        let s = Math.max(-1, Math.min(1, samples[i]));
+        v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      }
+      return new Blob([buf], { type: 'audio/wav' });
+    }
+
+    playBtn.addEventListener('click', function() {
+      if (!lastSamples) return;
+      if (!audioEl) {
+        audioEl = new Audio(URL.createObjectURL(wavBlob(lastSamples, expectedSampleRate)));
+        audioEl.onended = () => { playBtn.classList.remove('playing'); };
+        audioEl.play();
+        playBtn.classList.add('playing');
+      } else {
+        audioEl.pause();
+        audioEl = null;
+        playBtn.classList.remove('playing');
+      }
+    });
+
+    function makeDenoiser() {
+      const Module = window.Module;
+      const freeConfig = function(config) {
+        if ('buffer' in config) Module._free(config.buffer);
+        if ('config' in config) freeConfig(config.config);
+        if ('gtcrn' in config) freeConfig(config.gtcrn);
+        if ('dpdfnet' in config) freeConfig(config.dpdfnet);
+        Module._free(config.ptr);
+      };
+      const initDpdf = function(config) {
+        const modelLen = Module.lengthBytesUTF8(config.model) + 1;
+        const buffer = Module._malloc(modelLen);
+        const ptr = Module._malloc(4);
+        Module.stringToUTF8(config.model, buffer, modelLen);
+        Module.setValue(ptr, buffer, 'i8*');
+        return { buffer, ptr, len: 4 };
+      };
+      const initModelCfg = function(config) {
+        if (!('gtcrn' in config)) config.gtcrn = { model: '' };
+        if (!('dpdfnet' in config)) config.dpdfnet = { model: '' };
+        const gtcrn = initDpdf(config.gtcrn);
+        const dpdfnet = initDpdf(config.dpdfnet);
+        const len = gtcrn.len + 3 * 4 + dpdfnet.len;
+        const ptr = Module._malloc(len);
+        let o = 0;
+        Module._CopyHeap(gtcrn.ptr, gtcrn.len, ptr + o); o += gtcrn.len;
+        Module.setValue(ptr + o, config.numThreads || 1, 'i32'); o += 4;
+        Module.setValue(ptr + o, config.debug || 0, 'i32'); o += 4;
+        const providerLen = Module.lengthBytesUTF8(config.provider || 'cpu') + 1;
+        const buffer = Module._malloc(providerLen);
+        Module.stringToUTF8(config.provider || 'cpu', buffer, providerLen);
+        Module.setValue(ptr + o, buffer, 'i8*'); o += 4;
+        Module._CopyHeap(dpdfnet.ptr, dpdfnet.len, ptr + o);
+        return { buffer, ptr, len, gtcrn, dpdfnet };
+      };
+      const initDenCfg = function(config) {
+        if (!('model' in config)) config.model = { gtcrn: { model: '' }, dpdfnet: { model: '' }, provider: 'cpu', debug: 0, numThreads: 1 };
+        const modelConfig = initModelCfg(config.model);
+        const ptr = Module._malloc(modelConfig.len);
+        Module._CopyHeap(modelConfig.ptr, modelConfig.len, ptr);
+        return { ptr, len: modelConfig.len, config: modelConfig };
+      };
+      const copyDenoisedAudio = function(handle) {
+        const n = Module.HEAP32[handle / 4 + 1];
+        const sr = Module.HEAP32[handle / 4 + 2];
+        const sp = Module.HEAP32[handle / 4] / 4;
+        const out = new Float32Array(n);
+        for (let i = 0; i < n; i++) out[i] = Module.HEAPF32[sp + i];
+        Module._SherpaOnnxDestroyDenoisedAudio(handle);
+        return { samples: out, sampleRate: sr };
+      };
+      return {
+        handle: (function() {
+          const cfg = { model: { dpdfnet: { model: '/dpdfnet4.onnx' }, numThreads: 1, debug: 0, provider: 'cpu' } };
+          const c = initDenCfg(cfg);
+          const h = Module._SherpaOnnxCreateOfflineSpeechDenoiser(c.ptr);
+          freeConfig(c);
+          return h;
+        })(),
+        run: function(samples, sampleRate) {
+          const ptr = Module._malloc(samples.length * 4);
+          Module.HEAPF32.set(samples, ptr / 4);
+          const h = Module._SherpaOnnxOfflineSpeechDenoiserRun(this.handle, ptr, samples.length, sampleRate);
+          Module._free(ptr);
+          return copyDenoisedAudio(h);
+        },
+        free: function() { Module._SherpaOnnxDestroyOfflineSpeechDenoiser(this.handle); },
+      };
+    }
+
+    function denoiseSamples(samples) {
+      if (!denoiser) denoiser = makeDenoiser();
+      const out = denoiser.run(samples, expectedSampleRate);
+      denoiser.free();
+      denoiser = null;
+      return out.samples;
     }
 
     Module.onRuntimeInitialized = function() {
-      console.log('wasm runtime initialized');
       const config = {
         featConfig: { sampleRate: 16000, featureDim: 80 },
         modelConfig: {
           debug: 0,
           tokens: 'tokens.txt',
-          whisper: {
-            encoder: 'whisper-encoder.onnx',
-            decoder: 'whisper-decoder.onnx',
-          },
+          whisper: { encoder: 'whisper-encoder.onnx', decoder: 'whisper-decoder.onnx' },
         },
         decodingMethod: 'greedy_search',
         numThreads: numThreads,
       };
       try {
         recognizer = new OfflineRecognizer(config, Module);
-        console.log('recognizer created');
         initialized = true;
-        micBtn.disabled = false;
-        setHint('Hold to talk, release to transcribe');
-        setStatus('');
+        holdBtn.disabled = false;
+        modeBtn.disabled = false;
+        modeBtn.textContent = denoise ? 'asr+dn' : 'asr';
+        setTranscript('hold to talk', true);
       } catch (err) {
         console.error(err);
-        setHint('Failed to initialize recognizer: ' + err.message);
+        setTranscript('error: ' + err.message, true);
       }
     };
 
@@ -296,15 +393,11 @@
       const sampleRateRatio = audioCtx.sampleRate / exportSampleRate;
       const newLength = Math.round(buffer.length / sampleRateRatio);
       const result = new Float32Array(newLength);
-      let offsetResult = 0;
-      let offsetBuffer = 0;
+      let offsetResult = 0, offsetBuffer = 0;
       while (offsetResult < result.length) {
         let nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
         let accum = 0, count = 0;
-        for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
-          accum += buffer[i];
-          count++;
-        }
+        for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) { accum += buffer[i]; count++; }
         result[offsetResult] = accum / count;
         offsetResult++;
         offsetBuffer = nextOffsetBuffer;
@@ -313,7 +406,7 @@
     }
 
     function startRecording() {
-      if (!initialized || busy) return;
+      if (!initialized || busy || recording) return;
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
         mediaStream = stream;
         audioCtx = new AudioContext();
@@ -329,69 +422,77 @@
         source.connect(recorder);
         recorder.connect(audioCtx.destination);
         recording = true;
-        micBtn.classList.add('recording');
-        micBtn.textContent = '⏺️';
-        setHint('Recording… release to transcribe');
+        holdBtn.classList.add('recording');
+        holdBtn.textContent = 'release';
       }).catch(function(err) {
         console.error(err);
-        setHint('Microphone access denied: ' + err.message);
+        setTranscript('mic denied: ' + err.message, true);
       });
     }
 
     function stopRecording() {
       if (!recording) return;
       recording = false;
-      micBtn.classList.remove('recording');
-      micBtn.textContent = '🎙️';
-      try {
-        recorder.disconnect();
-      } catch (e) {}
-      try {
-        mediaStream.getTracks().forEach(t => t.stop());
-      } catch (e) {}
+      holdBtn.classList.remove('recording');
+      holdBtn.textContent = 'hold';
+      try { recorder.disconnect(); } catch (e) {}
+      try { mediaStream.getTracks().forEach(t => t.stop()); } catch (e) {}
       if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
       if (samples.length < expectedSampleRate) {
-        setHint('Too short — hold the button and speak again');
+        setPlayback(samples);
+        setTranscript('too short', true);
         return;
       }
-      setHint('Transcribing…');
+      setPlayback(samples);
+      setTranscript('…', true);
       busy = true;
       setTimeout(function() {
         try {
           const audio = new Float32Array(samples);
+          const input = denoise ? denoiseSamples(audio) : audio;
           const stream = recognizer.createStream();
-          stream.acceptWaveform(expectedSampleRate, audio);
+          stream.acceptWaveform(expectedSampleRate, input);
           recognizer.decode(stream);
           const result = recognizer.getResult(stream);
           stream.free();
           const text = result.text.trim();
-          if (text) {
-            setResult(text, false);
-            setHint('Done. Hold to talk again');
-          } else {
-            setResult('No speech detected. Try again.', true);
-            setHint('Hold to talk, release to transcribe');
-          }
+          setTranscript(text || 'no speech', !!text ? false : true);
         } catch (err) {
           console.error(err);
-          setHint('Recognition failed: ' + err.message);
+          setTranscript('error: ' + err.message, true);
         }
         busy = false;
       }, 50);
     }
 
-    micBtn.addEventListener('pointerdown', function(e) {
-      e.preventDefault();
-      startRecording();
+    holdBtn.addEventListener('pointerdown', function(e) { e.preventDefault(); startRecording(); });
+    holdBtn.addEventListener('pointerup', function(e) { e.preventDefault(); stopRecording(); });
+    holdBtn.addEventListener('pointerleave', function(e) { if (recording) stopRecording(); });
+    holdBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+    window.addEventListener('keydown', function(e) {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!e.repeat) startRecording();
+      }
     });
-    micBtn.addEventListener('pointerup', function(e) {
-      e.preventDefault();
-      stopRecording();
+    window.addEventListener('keyup', function(e) {
+      if (e.code === 'Space') { e.preventDefault(); stopRecording(); }
     });
-    micBtn.addEventListener('pointerleave', function(e) {
-      if (recording) stopRecording();
+    window.addEventListener('blur', function() { stopRecording(); });
+
+    modeBtn.addEventListener('click', function() {
+      denoise = !denoise;
+      modeBtn.textContent = denoise ? 'asr+dn' : 'asr';
     });
-    micBtn.addEventListener('contextmenu', e => e.preventDefault());
+    window.__h2hTest = { denoiseSamples, decodeSamples: function(input) {
+      const stream = recognizer.createStream();
+      stream.acceptWaveform(expectedSampleRate, new Float32Array(input));
+      recognizer.decode(stream);
+      const result = recognizer.getResult(stream);
+      stream.free();
+      return result.text.trim();
+    }, getState: function() { return { initialized, denoise, lastSamples: lastSamples && lastSamples.length, numThreads }; } };
   </script>
 </body>
 </html>
