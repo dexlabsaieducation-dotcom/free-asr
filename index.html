@@ -29,275 +29,287 @@
         radial-gradient(1000px 500px at 90% 110%, rgba(76,201,240,0.10), transparent 60%),
         var(--bg);
       color: var(--text);
-      font-family: "Segoe UI", system-ui, sans-serif;
-      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 16px;
     }
-    main {
-      width: 100%;
-      max-width: 560px;
-    }
-    h1 {
-      letter-spacing: 0.12em;
-      font-size: 1.4rem;
-      margin: 0 0 4px;
-    }
-    .sub {
-      color: var(--muted);
-      margin: 0 0 20px;
-      font-size: 0.9rem;
-    }
-    .sub code { color: var(--accent-2); }
     .card {
+      width: 100%;
+      max-width: 640px;
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
     }
-    .status {
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+    #status {
+      display: none;
+      font-size: 13px;
+      color: var(--accent-2);
+      margin-bottom: 12px;
+      min-height: 18px;
+      word-break: break-word;
+    }
+    .mic-area {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
-      min-height: 24px;
-      font-size: 0.85rem;
-      color: var(--muted);
+      gap: 12px;
+      margin-bottom: 20px;
     }
-    .dot {
-      width: 9px; height: 9px; border-radius: 50%;
-      background: var(--muted);
-      flex-shrink: 0;
-      transition: background 0.2s;
-    }
-    .dot.loading { background: var(--accent-2); animation: pulse 1.2s infinite; }
-    .dot.recording { background: var(--danger); animation: pulse 0.8s infinite; }
-    .dot.ready { background: var(--ok); }
-    @keyframes pulse { 50% { opacity: 0.35; } }
-    .progress { display: none; }
-    .progress.show { display: block; }
-    .progress-track {
-      height: 5px; border-radius: 3px;
-      background: var(--panel-2); overflow: hidden; margin-top: 8px;
-    }
-    .progress-fill {
-      height: 100%; width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      transition: width 0.15s;
-    }
-    .controls { display: flex; gap: 10px; flex-wrap: wrap; }
-    button {
-      flex: 1;
-      min-width: 120px;
-      padding: 13px 18px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel-2);
+    #micBtn {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: rgba(124,108,255,0.12);
       color: var(--text);
-      font-size: 0.95rem;
-      font-weight: 600;
+      font-size: 40px;
       cursor: pointer;
-      transition: transform 0.05s, border-color 0.15s, background 0.15s;
+      transition: transform 0.1s, background 0.2s, border-color 0.2s;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    button:hover:not(:disabled) { border-color: var(--accent); }
-    button:active:not(:disabled) { transform: scale(0.98); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    button.primary {
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      border-color: transparent;
-      color: #fff;
+    #micBtn:active, #micBtn.recording {
+      background: var(--danger);
+      border-color: var(--danger);
+      transform: scale(0.92);
     }
-    button.stop { background: linear-gradient(90deg, var(--danger), #ff7a5c); border-color: transparent; color: #fff; }
-    .transcript {
-      margin-top: 18px;
-      min-height: 90px;
-      padding: 14px;
-      border-radius: 12px;
+    #micBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+    #hint { color: var(--muted); font-size: 13px; min-height: 18px; }
+    #result {
       background: var(--panel-2);
       border: 1px solid var(--border);
-      color: var(--text);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 18px;
+      line-height: 1.6;
+      min-height: 80px;
       white-space: pre-wrap;
       word-break: break-word;
-      font-size: 0.95rem;
-      line-height: 1.55;
+      color: var(--text);
     }
-    .transcript:empty::before {
-      content: "Transcript will appear here…";
-      color: var(--muted);
-    }
-    .hint {
-      margin-top: 14px;
-      font-size: 0.8rem;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-    .hint b { color: var(--text); }
+    #result.placeholder { color: var(--muted); font-size: 15px; }
+    .footer { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .footer a { color: var(--accent-2); }
+    .threads { color: var(--ok); }
   </style>
 </head>
 <body>
-  <main>
-    <h1>FREE ASR</h1>
-    <p class="sub">Hindi → Hinglish, 100% in your browser using <code>Oriserve/Whisper-Hindi2Hinglish-Swift</code> (q8 ONNX). No audio leaves your device.</p>
-
-    <div class="card">
-      <div class="status">
-        <span class="dot" id="dot"></span>
-        <span id="statusText">Loading model…</span>
-        <span style="margin-left:auto;display:none" class="progress" id="pctWrap">(<span id="pct">0</span>%)</span>
-      </div>
-      <div class="progress" id="progressWrap">
-        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-      </div>
-
-      <div class="controls">
-        <button id="recordBtn" class="primary" disabled>🎙 Start Recording</button>
-        <button id="stopBtn" class="stop" disabled>Stop</button>
-      </div>
-
-      <div class="transcript" id="transcript"></div>
-
-      <p class="hint">
-        <b>How it works:</b> Press <b>Start Recording</b>, speak in Hindi (or Hinglish),
-        then press <b>Stop</b>. The ~102MB int8 model is downloaded once from Hugging Face and cached,
-        then runs locally on WebGPU (or WASM fallback).
-      </p>
+  <div class="card">
+    <h1>Free ASR — Hindi → Hinglish</h1>
+    <div class="subtitle">
+      100% client-side speech-to-text with the Whisper-Hindi2Hinglish-Swift model,
+      powered by sherpa-onnx in your browser. Your audio never leaves the device.
     </div>
-  </main>
+    <div id="status"></div>
+    <div class="mic-area">
+      <button id="micBtn" disabled title="Hold to talk">🎙️</button>
+      <div id="hint">Loading model…</div>
+    </div>
+    <div id="result" class="placeholder">Transcript appears here. Hold the mic button, speak in Hindi, then release.</div>
+    <div class="footer">
+      <span class="threads" id="threadInfo"></span> ·
+      Model: Oriserve/Whisper-Hindi2Hinglish-Swift · Runs locally via sherpa-onnx WASM
+    </div>
+  </div>
 
-  <script type="module">
-    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
-
-    env.allowLocalModels = false;
-    env.allowRemoteModels = true;
-
-    const MODEL_ID = 'Hirecentive-D3l/Whisper-Hindi2Hinglish-Swift-ONNX';
-
-    const $ = (id) => document.getElementById(id);
-    const dot = $('dot');
-    const statusText = $('statusText');
-    const pctWrap = $('pctWrap');
-    const pct = $('pct');
-    const progressWrap = $('progressWrap');
-    const progressFill = $('progressFill');
-    const recordBtn = $('recordBtn');
-    const stopBtn = $('stopBtn');
-    const transcript = $('transcript');
-
-    let asr = null;
-    let mediaRecorder = null;
-    let chunks = [];
-
-    function setStatus(text, state) {
-      statusText.textContent = text;
-      dot.className = 'dot';
-      if (state) dot.classList.add(state);
-    }
-
-    function onProgress({ status, file, progress }) {
-      if (status === 'initiate') {
-        setStatus(`Downloading ${file ?? 'model'}…`, 'loading');
-        pctWrap.style.display = 'inline';
-        progressWrap.classList.add('show');
-      } else if (status === 'download') {
-        pct.textContent = Math.round(progress * 100);
-        progressFill.style.width = `${progress * 100}%`;
-      } else if (status === 'progress') {
-        // loading into WASM/WebGPU
-      } else if (status === 'done') {
-        pctWrap.style.display = 'none';
-        progressWrap.classList.remove('show');
+  <script src="coi-serviceworker.js"></script>
+  <script>
+    const DATA_PART_NAMES = [
+      'hindi2hinglish-swift.data.partaa',
+      'hindi2hinglish-swift.data.partab',
+      'hindi2hinglish-swift.data.partac',
+    ];
+    let dataCache = null;
+    async function loadDataParts() {
+      if (dataCache) return dataCache;
+      const parts = await Promise.all(DATA_PART_NAMES.map(name =>
+        fetch(name).then(r => r.arrayBuffer())));
+      const total = parts.reduce((a, b) => a + b.byteLength, 0);
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const p of parts) {
+        merged.set(new Uint8Array(p), offset);
+        offset += p.byteLength;
       }
+      dataCache = merged.buffer;
+      return dataCache;
+    }
+    const origFetch = window.fetch;
+    window.fetch = function(url, opts) {
+      if (typeof url === 'string' && url.endsWith('hindi2hinglish-swift.data')) {
+        return loadDataParts().then(buf => new Response(buf, {
+          status: 200,
+          headers: { 'Content-Length': String(buf.byteLength) },
+        }));
+      }
+      return origFetch(url, opts);
+    };
+  </script>
+  <script src="sherpa-onnx-wasm-main-asr.js"></script>
+  <script src="sherpa-onnx-asr.js"></script>
+  <script>
+    const expectedSampleRate = 16000;
+    const micBtn = document.getElementById('micBtn');
+    const hint = document.getElementById('hint');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+
+    let recognizer = null;
+    let audioCtx = null;
+    let mediaStream = null;
+    let recorder = null;
+    let samples = [];
+    let recording = false;
+    let busy = false;
+    let initialized = false;
+
+    const numThreads = (navigator.hardwareConcurrency || 4);
+    document.getElementById('threadInfo').textContent =
+      `Threads: ${numThreads}${crossOriginIsolated ? ' (multithreaded)' : ' (single-threaded)'}`;
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+      statusEl.style.display = msg ? 'block' : 'none';
+    }
+    function setHint(msg) { hint.textContent = msg; }
+    function setResult(text, placeholder) {
+      resultEl.textContent = text;
+      resultEl.classList.toggle('placeholder', !!placeholder);
     }
 
-    async function init() {
+    Module.onRuntimeInitialized = function() {
+      console.log('wasm runtime initialized');
+      const config = {
+        featConfig: { sampleRate: 16000, featureDim: 80 },
+        modelConfig: {
+          debug: 0,
+          tokens: 'tokens.txt',
+          whisper: {
+            encoder: 'whisper-encoder.onnx',
+            decoder: 'whisper-decoder.onnx',
+          },
+        },
+        decodingMethod: 'greedy_search',
+        numThreads: numThreads,
+      };
       try {
-        setStatus('Loading model (WebGPU)…', 'loading');
-        try {
-          asr = await pipeline('automatic-speech-recognition', MODEL_ID, {
-            dtype: 'q8',
-            device: 'webgpu',
-            progress_callback: onProgress,
-          });
-        } catch (err) {
-          console.warn('WebGPU unavailable, falling back to WASM:', err.message);
-          setStatus('Loading model (WASM)…', 'loading');
-          asr = await pipeline('automatic-speech-recognition', MODEL_ID, {
-            dtype: 'q8',
-            device: 'wasm',
-            progress_callback: onProgress,
-          });
-        }
-        setStatus('Ready — model loaded locally.', 'ready');
-        recordBtn.disabled = false;
+        recognizer = new OfflineRecognizer(config, Module);
+        console.log('recognizer created');
+        initialized = true;
+        micBtn.disabled = false;
+        setHint('Hold to talk, release to transcribe');
+        setStatus('');
       } catch (err) {
         console.error(err);
-        setStatus(`Error: ${err.message}`, null);
+        setHint('Failed to initialize recognizer: ' + err.message);
       }
+    };
+
+    function downsampleBuffer(buffer, exportSampleRate) {
+      if (exportSampleRate === audioCtx.sampleRate) return buffer;
+      const sampleRateRatio = audioCtx.sampleRate / exportSampleRate;
+      const newLength = Math.round(buffer.length / sampleRateRatio);
+      const result = new Float32Array(newLength);
+      let offsetResult = 0;
+      let offsetBuffer = 0;
+      while (offsetResult < result.length) {
+        let nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+        let accum = 0, count = 0;
+        for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+          accum += buffer[i];
+          count++;
+        }
+        result[offsetResult] = accum / count;
+        offsetResult++;
+        offsetBuffer = nextOffsetBuffer;
+      }
+      return result;
     }
 
-    async function startRecording() {
-      chunks = [];
-      transcript.textContent = '';
-
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        setStatus(`Mic permission denied: ${err.message}`, null);
-        return;
-      }
-
-      const rec = new MediaRecorder(stream);
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      rec.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        transcribe(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
-      };
-      rec.start();
-      mediaRecorder = rec;
-
-      recordBtn.disabled = true;
-      stopBtn.disabled = false;
-      setStatus('Recording… speak in Hindi / Hinglish.', 'recording');
+    function startRecording() {
+      if (!initialized || busy) return;
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        mediaStream = stream;
+        audioCtx = new AudioContext();
+        const source = audioCtx.createMediaStreamSource(stream);
+        recorder = audioCtx.createScriptProcessor(4096, 1, 1);
+        samples = [];
+        recorder.onaudioprocess = function(e) {
+          if (!recording) return;
+          let chunk = new Float32Array(e.inputBuffer.getChannelData(0));
+          chunk = downsampleBuffer(chunk, expectedSampleRate);
+          for (let i = 0; i < chunk.length; i++) samples.push(chunk[i]);
+        };
+        source.connect(recorder);
+        recorder.connect(audioCtx.destination);
+        recording = true;
+        micBtn.classList.add('recording');
+        micBtn.textContent = '⏺️';
+        setHint('Recording… release to transcribe');
+      }).catch(function(err) {
+        console.error(err);
+        setHint('Microphone access denied: ' + err.message);
+      });
     }
 
     function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        stopBtn.disabled = true;
-        setStatus('Transcribing…', 'loading');
-        mediaRecorder.stop();
-      }
-    }
-
-    async function transcribe(blob) {
+      if (!recording) return;
+      recording = false;
+      micBtn.classList.remove('recording');
+      micBtn.textContent = '🎙️';
       try {
-        const buf = await blob.arrayBuffer();
-        const audioCtx = new AudioContext({ sampleRate: 16000 });
-        const decoded = await audioCtx.decodeAudioData(buf);
-        const float32 = decoded.getChannelData(0);
-        await audioCtx.close();
-
-        setStatus('Transcribing…', 'loading');
-        const { text } = await asr(float32, {
-          language: 'hi',
-          task: 'transcribe',
-          chunk_length_s: 30,
-          stride_length_s: 5,
-        });
-        transcript.textContent = text;
-        setStatus('Done.', 'ready');
-      } catch (err) {
-        console.error(err);
-        setStatus(`Transcription error: ${err.message}`, null);
-      } finally {
-        recordBtn.disabled = false;
-        stopBtn.disabled = true;
+        recorder.disconnect();
+      } catch (e) {}
+      try {
+        mediaStream.getTracks().forEach(t => t.stop());
+      } catch (e) {}
+      if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
+      if (samples.length < expectedSampleRate) {
+        setHint('Too short — hold the button and speak again');
+        return;
       }
+      setHint('Transcribing…');
+      busy = true;
+      setTimeout(function() {
+        try {
+          const audio = new Float32Array(samples);
+          const stream = recognizer.createStream();
+          stream.acceptWaveform(expectedSampleRate, audio);
+          recognizer.decode(stream);
+          const result = recognizer.getResult(stream);
+          stream.free();
+          const text = result.text.trim();
+          if (text) {
+            setResult(text, false);
+            setHint('Done. Hold to talk again');
+          } else {
+            setResult('No speech detected. Try again.', true);
+            setHint('Hold to talk, release to transcribe');
+          }
+        } catch (err) {
+          console.error(err);
+          setHint('Recognition failed: ' + err.message);
+        }
+        busy = false;
+      }, 50);
     }
 
-    recordBtn.addEventListener('click', startRecording);
-    stopBtn.addEventListener('click', stopRecording);
-
-    init();
+    micBtn.addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      startRecording();
+    });
+    micBtn.addEventListener('pointerup', function(e) {
+      e.preventDefault();
+      stopRecording();
+    });
+    micBtn.addEventListener('pointerleave', function(e) {
+      if (recording) stopRecording();
+    });
+    micBtn.addEventListener('contextmenu', e => e.preventDefault());
   </script>
 </body>
 </html>
